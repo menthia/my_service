@@ -155,3 +155,16 @@ else:
         st.warning("조건에 맞는 기록이 없습니다. 조건을 완화해보세요.")
     else:
         st.dataframe(pd.DataFrame(records_res["records"]))
+
+        try:
+            csv_res = requests.get(
+                f"{BACKEND_URL}/records/export.csv", params=filter_params, timeout=5
+            )
+            st.download_button(
+                "CSV로 내려받기",
+                data=csv_res.content,
+                file_name="records.csv",
+                mime="text/csv",
+            )
+        except requests.exceptions.RequestException:
+            st.error("백엔드에 연결할 수 없습니다. 터미널 1에서 백엔드가 켜져 있는지 확인하세요.")
