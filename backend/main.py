@@ -86,3 +86,27 @@ def get_records():
 
     records.sort(key=lambda r: r["created_at"], reverse=True)
     return {"count": len(records), "records": records}
+
+
+@app.get("/records/user/{user_name}")
+def get_records_by_user(user_name: str):
+    records = []
+    if DATA_FILE.exists():
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    record = json.loads(line)
+                    if record["user_name"] == user_name:
+                        records.append(record)
+
+    records.sort(key=lambda r: r["created_at"], reverse=True)
+    count = len(records)
+    avg_score = round(sum(r["score"] for r in records) / count, 1) if count else 0
+
+    return {
+        "user_name": user_name,
+        "count": count,
+        "avg_score": avg_score,
+        "records": records,
+    }
