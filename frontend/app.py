@@ -91,17 +91,42 @@ st.subheader("내 기록 조회")
 query_name = st.text_input("조회할 이름")
 if st.button("내 기록 보기"):
     try:
-        user_res = requests.get(f"{BACKEND_URL}/records/user/{query_name}", timeout=5).json()
+        st.session_state["user_res"] = requests.get(
+            f"{BACKEND_URL}/records/user/{query_name}", timeout=5
+        ).json()
     except requests.exceptions.RequestException:
         st.error("백엔드에 연결할 수 없습니다. 터미널 1에서 백엔드가 켜져 있는지 확인하세요.")
+
+if "user_res" in st.session_state:
+    user_res = st.session_state["user_res"]
+    if user_res["count"] == 0:
+        st.info(f"'{user_res['user_name']}' 이름으로 남긴 기록이 없습니다.")
     else:
-        if user_res["count"] == 0:
-            st.info(f"'{query_name}' 이름으로 남긴 기록이 없습니다.")
-        else:
-            m_col1, m_col2 = st.columns(2)
-            m_col1.metric("내 기록 수", user_res["count"])
-            m_col2.metric("평균 만족도", user_res["avg_score"])
-            st.dataframe(pd.DataFrame(user_res["records"]))
+        m_col1, m_col2 = st.columns(2)
+        m_col1.metric("내 기록 수", user_res["count"])
+        m_col2.metric("평균 만족도", user_res["avg_score"])
+        st.dataframe(pd.DataFrame(user_res["records"]))
+
+        delete_options = {
+            f"{r['id']} · {r['region']} · {r['score']} · {r['memo']}": r["id"]
+            for r in user_res["records"]
+        }
+        selected_label = st.selectbox("삭제할 기록 선택", list(delete_options.keys()))
+        if st.button("선택한 기록 삭제"):
+            record_id = delete_options[selected_label]
+            try:
+                del_res = requests.delete(f"{BACKEND_URL}/records/{record_id}", timeout=5)
+            except requests.exceptions.RequestException:
+                st.error("백엔드에 연결할 수 없습니다. 터미널 1에서 백엔드가 켜져 있는지 확인하세요.")
+            else:
+                if del_res.status_code == 200:
+                    st.success("삭제했습니다")
+                    st.session_state["user_res"] = requests.get(
+                        f"{BACKEND_URL}/records/user/{user_res['user_name']}", timeout=5
+                    ).json()
+                    st.rerun()
+                else:
+                    st.error(del_res.json().get("detail"))
 
 st.subheader("전체 기록")
 try:

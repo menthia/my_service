@@ -1,4 +1,5 @@
 import json
+import os
 import random
 import uuid
 from datetime import timedelta, timezone
@@ -72,6 +73,34 @@ def create_record(payload: RecordCreate):
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
     return record
+
+
+@app.delete("/records/{record_id}")
+def delete_record(record_id: str):
+    records = []
+    found = False
+    if DATA_FILE.exists():
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                record = json.loads(line)
+                if record["id"] == record_id:
+                    found = True
+                    continue
+                records.append(record)
+
+    if not found:
+        raise HTTPException(status_code=404, detail="record not found")
+
+    tmp_file = DATA_FILE.parent / f"{DATA_FILE.name}.tmp"
+    with open(tmp_file, "w", encoding="utf-8") as f:
+        for record in records:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    os.replace(tmp_file, DATA_FILE)
+
+    return {"deleted": record_id}
 
 
 @app.get("/records")
