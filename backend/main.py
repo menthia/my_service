@@ -88,6 +88,43 @@ def get_records():
     return {"count": len(records), "records": records}
 
 
+@app.get("/stats")
+def get_stats():
+    records = []
+    if DATA_FILE.exists():
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    records.append(json.loads(line))
+
+    total = len(records)
+    user_count = len({r["user_name"] for r in records})
+    overall_avg = round(sum(r["score"] for r in records) / total, 1) if total else 0
+
+    by_region_map = {}
+    for r in records:
+        region = r["region"]
+        by_region_map.setdefault(region, []).append(r["score"])
+
+    by_region = [
+        {
+            "region": region,
+            "count": len(scores),
+            "avg_score": round(sum(scores) / len(scores), 1),
+        }
+        for region, scores in by_region_map.items()
+    ]
+    by_region.sort(key=lambda r: r["count"], reverse=True)
+
+    return {
+        "total": total,
+        "user_count": user_count,
+        "overall_avg": overall_avg,
+        "by_region": by_region,
+    }
+
+
 @app.get("/records/user/{user_name}")
 def get_records_by_user(user_name: str):
     records = []
