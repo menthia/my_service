@@ -27,7 +27,23 @@ if submitted:
     if not record_name:
         st.warning("이름을 입력해주세요")
     else:
-        st.success(f"{record_name} · {record_city} · 만족도 {record_rating} · {record_memo}")
+        try:
+            res = requests.post(
+                f"{BACKEND_URL}/records",
+                json={
+                    "user_name": record_name,
+                    "region": record_city,
+                    "score": record_rating,
+                    "memo": record_memo,
+                },
+                timeout=5,
+            )
+            if res.status_code == 201:
+                st.success(f"저장 완료! (id: {res.json()['id']})")
+            else:
+                st.error(res.json().get("detail"))
+        except requests.exceptions.RequestException:
+            st.error("백엔드에 연결할 수 없습니다. 터미널 1에서 백엔드가 켜져 있는지 확인하세요.")
 
 city = st.selectbox("지역 선택", list(locations.keys()))
 n_points = st.slider("랜덤 포인트 개수", 10, 200, 50)
@@ -55,3 +71,14 @@ with col2:
 
 st.subheader("원본 데이터")
 st.dataframe(df)
+
+st.subheader("전체 기록")
+try:
+    records_res = requests.get(f"{BACKEND_URL}/records", timeout=5).json()
+except requests.exceptions.RequestException:
+    st.error("백엔드에 연결할 수 없습니다. 터미널 1에서 백엔드가 켜져 있는지 확인하세요.")
+else:
+    if records_res["count"] == 0:
+        st.info("아직 기록이 없습니다. 위에서 첫 기록을 남겨보세요.")
+    else:
+        st.dataframe(pd.DataFrame(records_res["records"]))
