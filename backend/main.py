@@ -5,6 +5,7 @@ import uuid
 from datetime import timedelta, timezone
 from datetime import datetime as dt
 from pathlib import Path
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -104,7 +105,11 @@ def delete_record(record_id: str):
 
 
 @app.get("/records")
-def get_records():
+def get_records(
+    region: Optional[str] = None,
+    min_score: Optional[int] = None,
+    keyword: Optional[str] = None,
+):
     records = []
     if DATA_FILE.exists():
         with open(DATA_FILE, "r", encoding="utf-8") as f:
@@ -112,6 +117,13 @@ def get_records():
                 line = line.strip()
                 if line:
                     records.append(json.loads(line))
+
+    if region is not None:
+        records = [r for r in records if r["region"] == region]
+    if min_score is not None:
+        records = [r for r in records if r["score"] >= min_score]
+    if keyword is not None:
+        records = [r for r in records if keyword.lower() in r["memo"].lower()]
 
     records.sort(key=lambda r: r["created_at"], reverse=True)
     return {"count": len(records), "records": records}
